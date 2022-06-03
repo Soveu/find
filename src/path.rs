@@ -1,6 +1,6 @@
 use std::ffi::CStr;
-use std::ops::Deref;
 use std::fmt;
+use std::ops::Deref;
 
 /// A wrapper over Vec<u8> that keeps a null byte at the end.
 #[derive(Clone)]
@@ -50,7 +50,9 @@ impl Path {
 
     pub fn push(&mut self, s: &CStr) {
         // SAFETY: len() must be at least 1, because of the null byte.
-        unsafe { self.0.set_len(self.0.len() - 1); }
+        unsafe {
+            self.0.set_len(self.0.len() - 1);
+        }
         self.0.extend_from_slice(s.to_bytes());
         self.0.extend_from_slice(b"/\0");
     }

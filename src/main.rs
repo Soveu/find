@@ -1,18 +1,18 @@
 #![feature(array_windows)]
 
+mod directory;
+mod dirent;
 mod path;
 mod syscall;
-mod dirent;
-mod directory;
 
-use path::Path;
-use dirent::*;
 use directory::opendir;
+use dirent::*;
+use path::Path;
 
-use std::thread;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
 use crossbeam_channel::TryRecvError;
+use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
+use std::thread;
 
 enum Job {
     GetDirEntries { path: Path },
@@ -77,7 +77,7 @@ impl Worker {
         match self.recv.try_recv() {
             Ok(job) => return Some(job),
             Err(TryRecvError::Disconnected) => panic!("channel disconnected"),
-            Err(TryRecvError::Empty) => {}, // fallthrough
+            Err(TryRecvError::Empty) => {} // fallthrough
         }
 
         // If we were the last busy worker, shutdown all other workers.
@@ -119,7 +119,9 @@ impl Worker {
             }
 
             path.push(&dent.filename);
-            self.send.send(Job::GetDirEntries { path: path.clone() }).unwrap();
+            self.send
+                .send(Job::GetDirEntries { path: path.clone() })
+                .unwrap();
             path.truncate(path.to_bytes().len() - dent.filename.to_bytes().len() - 1);
         }
 
@@ -131,22 +133,23 @@ fn main() {
     const WORKERS: u32 = 4;
 
     let (s, r) = crossbeam_channel::unbounded();
-    s.send(Job::GetDirEntries { path: Path::from_str("/") }).unwrap();
+    s.send(Job::GetDirEntries {
+        path: Path::from_str("/"),
+    })
+    .unwrap();
 
     let shared = Arc::new(Shared {
         busy_workers: AtomicU32::new(0),
         num_of_workers: AtomicU32::new(0),
     });
 
-    let new_worker = |i: u32| {
-        Worker {
-            shared: Arc::clone(&shared),
-            dirent_buf: vec![0u64; 1024 * 1024].into_boxed_slice(),
-            send: s.clone(),
-            recv: r.clone(),
-            id: i,
-            files: Vec::with_capacity(128),
-        }
+    let new_worker = |i: u32| Worker {
+        shared: Arc::clone(&shared),
+        dirent_buf: vec![0u64; 1024 * 1024].into_boxed_slice(),
+        send: s.clone(),
+        recv: r.clone(),
+        id: i,
+        files: Vec::with_capacity(128),
     };
 
     let workers: Vec<_> = (0..WORKERS)
@@ -167,7 +170,7 @@ fn main() {
 
     for path in paths {
         let p = path.as_cstr().to_bytes();
-        let p = &p[..p.len()-1];
+        let p = &p[..p.len() - 1];
         let p = std::str::from_utf8(p).unwrap();
         println!("{}", p);
     }

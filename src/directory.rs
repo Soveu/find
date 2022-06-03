@@ -1,7 +1,7 @@
 use crate::syscall;
 
-use std::fs::File;
 use std::ffi::CStr;
+use std::fs::File;
 use std::io;
 use std::os::unix::io::FromRawFd;
 
